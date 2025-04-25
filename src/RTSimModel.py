@@ -57,7 +57,9 @@ class RTSimModel:
         self.model.E0 = pyo.Param(self.model.B)           # Initial state of charge
         self.model.STORAGE_COST = pyo.Param(self.model.B)  # Operating cost per MWh of throughput
         self.model.E_FINAL = pyo.Param(self.model.B)      # Required final state of charge
-        
+        self.model.VCUP_B = pyo.Param(self.model.B, default=1.0)   # FO Up cost for storage
+        self.model.VCDN_B = pyo.Param(self.model.B, default=1.0)   # FO Down cost (benefit) for storage
+
         # Storage DA parameters
         self.model.e_DA = pyo.Param(self.model.B, self.model.T)  # DA energy level
         self.model.p_ch_DA = pyo.Param(self.model.B, self.model.T)  # DA charging
@@ -87,41 +89,30 @@ class RTSimModel:
     def _define_objective(self):
         # Objective Function
         def obj_expression(m):
-            objective_terms = []
-            
-            for s in m.S:
-                scenario_terms = []
-                
-                # Generator adjustment costs
-                scenario_terms.append(
-                    sum(m.VCUP[g] * m.xup[s,g,t] - m.VCDN[g] * m.xdn[s,g,t] for g in m.G for t in m.T)
-                )
-                
-                # Shortage/surplus penalties
-                scenario_terms.append(m.PENDN * sum(m.sdup[s,t] for t in m.T))
-                scenario_terms.append(m.PEN * sum(m.sddn[s,t] for t in m.T))
-                
-                # Demand response costs
-                scenario_terms.append(
-                    sum((m.D1 * (m.DAdr[t] + m.d[s,t]) + 
-                         m.D2 * (m.DAdr[t] + m.d[s,t]) * (m.DAdr[t] + m.d[s,t])) for t in m.T)
-                )
-                scenario_terms.append(
-                    -sum((m.D1 * m.DAdr[t] + m.D2 * m.DAdr[t] * m.DAdr[t]) for t in m.T)
-                )
-                
-                # Storage operating costs - only if storage exists
-                # if hasattr(m, 'p_ch') and len(m.B) > 0:
-                #     scenario_terms.append(
-                #         sum(m.STORAGE_COST[b] * (m.p_ch[s,b,t] + m.p_dch[s,b,t]) for b in m.B for t in m.T)
-                #     )
-                
-                # Add the weighted scenario terms to the overall objective
-                objective_terms.append(m.prob[s] * sum(scenario_terms))
-            
-            return sum(objective_terms)
+            return sum(
+                m.prob[s] * (
+                    # Generator adjustment costs over time
+                    sum(m.VCUP[g] * m.xup[s, g, t] - m.VCDN[g] * m.xdn[s, g, t]
+                        for g in m.G for t in m.T)
 
-        self.model.OBJ = pyo.Objective(rule=obj_expression)
+                    # Penalty costs over time
+                    + m.PENDN * sum(m.sdup[s, t] for t in m.T)
+                    + m.PEN * sum(m.sddn[s, t] for t in m.T)
+
+                    # Demand response cost (quadratic) minus base
+                    + sum(m.D1 * (m.DAdr[t] + m.d[s, t]) + m.D2 * (m.DAdr[t] + m.d[s, t]) ** 2 for t in m.T)
+                    - sum(m.D1 * m.DAdr[t] + m.D2 * m.DAdr[t] ** 2 for t in m.T)
+
+                    # Optional storage throughput cost
+                    + sum(m.STORAGE_COST[b] * (m.p_ch[s, b, t] + m.p_dch[s, b, t]) for b in m.B for t in m.T)
+                    
+                    # FO settlement/activation
+                    + sum(m.VCUP_B[b] * m.b_up[s,b,t] - m.VCDN_B[b] * m.b_dn[s,b,t] for b in m.B for t in m.T)
+                )
+                for s in m.S
+            )
+
+        self.model.OBJ = pyo.Objective(rule=obj_expression, sense=pyo.minimize)
     
     def _define_constraints(self):
         # RT energy balance for each scenario and time period
@@ -140,11 +131,11 @@ class RTSimModel:
         self.model.Con3 = pyo.Constraint(self.model.S, self.model.T, rule=RT_energy_balance)
 
         # RT renewable availability
-        # def RT_RE_availability(model, s, t):
-        #     return (model.rgup[s,t] - model.rgdn[s,t] + model.sdup[s,t] - model.sddn[s,t] == 
-        #             model.RE[s,t] - model.REDA[t])
+        def RT_RE_availability(model, s, t):
+            return (model.rgup[s,t] - model.rgdn[s,t] + model.sdup[s,t] - model.sddn[s,t] == 
+                    model.RE[s,t] - model.REDA[t])
                     
-        # self.model.Con4 = pyo.Constraint(self.model.S, self.model.T, rule=RT_RE_availability)
+        self.model.Con4 = pyo.Constraint(self.model.S, self.model.T, rule=RT_RE_availability)
 
         # Generator constraints - only if generators exist
         if hasattr(self.model, 'xup') and (len(self.model.G) > 0 or isinstance(self.model.G, pyo.RangeSet) or self.num_generators is None):
@@ -189,7 +180,8 @@ class RTSimModel:
             
         self.model.storage_capacity = pyo.Constraint(self.model.S, self.model.B, self.model.T, rule=storage_capacity)
 
-        # Power limits
+        # Power limits 
+        # NOTE: Mutual exclusivity is approximated via P_MAX upper bound. Dual-safe but not strict.
         def power_limits(model, s, b, t):
             return model.p_ch[s,b,t] + model.p_dch[s,b,t] <= model.P_MAX[b]
             
@@ -205,8 +197,17 @@ class RTSimModel:
         # Final state of charge requirement
         def final_soc(model, s, b):
             return model.e[s,b,self.num_periods] >= model.E_FINAL[b]
-            
         self.model.final_soc = pyo.Constraint(self.model.S, self.model.B, rule=final_soc)
+
+        # Ensure FO up doesn't exceed discharging ability
+        def storage_rt_up_cap(model, s, b, t):
+            return model.b_up[s,b,t] <= model.e[s,b,t] * model.ETA_DCH[b]
+        self.model.storage_rt_up_cap = pyo.Constraint(self.model.S, self.model.B, self.model.T, rule=storage_rt_up_cap)
+
+        # Ensure FO down doesn't exceed charging headroom
+        def storage_rt_dn_cap(model, s, b, t):
+            return model.b_dn[s,b,t] <= (model.E_MAX[b] - model.e[s,b,t]) / model.ETA_CH[b]
+        self.model.storage_rt_dn_cap = pyo.Constraint(self.model.S, self.model.B, self.model.T, rule=storage_rt_dn_cap)
 
         # Storage ramping constraints
         # def storage_ramp_rate(model, s, b, t):
@@ -219,7 +220,6 @@ class RTSimModel:
         #         model.p_dch[s,b,t] - model.p_dch[s,b,t-1] <= 0.25 * model.P_MAX[b],
         #         model.p_dch[s,b,t-1] - model.p_dch[s,b,t] <= 0.25 * model.P_MAX[b]
         #     ]
-                    
         # self.model.storage_ramp = pyo.Constraint(self.model.S, self.model.B, self.model.T, rule=storage_ramp_rate)
 
         # Record duals

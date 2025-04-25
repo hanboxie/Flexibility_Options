@@ -34,10 +34,10 @@ class DAFOModel:
     
     def _define_parameters(self):
         # General Parameters
-        self.model.VC = pyo.Param(self.model.G)           # Variable cost
-        self.model.VCUP = pyo.Param(self.model.G)         # Variable cost up
-        self.model.VCDN = pyo.Param(self.model.G)         # Variable cost down
-        self.model.CAP = pyo.Param(self.model.G)          # Capacity
+        self.model.VC = pyo.Param(self.model.G, within=pyo.NonNegativeReals)           # Variable cost
+        self.model.VCUP = pyo.Param(self.model.G, within=pyo.NonNegativeReals)         # Variable cost up
+        self.model.VCDN = pyo.Param(self.model.G, within=pyo.NonNegativeReals)         # Variable cost down
+        self.model.CAP = pyo.Param(self.model.G, within=pyo.NonNegativeReals)          # Capacity
         self.model.REDA = pyo.Param(self.model.T)         # Maximum DA RE for each hour
         self.model.DEMAND = pyo.Param(self.model.T)       # Electricity demand per hour
         self.model.D1 = pyo.Param(within=pyo.NonNegativeIntegers)    # Linear cost coefficient for demand slack
@@ -60,6 +60,9 @@ class DAFOModel:
         self.model.E0 = pyo.Param(self.model.B)           # Initial state of charge
         self.model.E_FINAL = pyo.Param(self.model.B)      # Required final state of charge
         self.model.STORAGE_COST = pyo.Param(self.model.B) # Storage operating cost per MWh
+        self.model.VCUP_B = pyo.Param(self.model.B, default=1.0)   # FO Up cost for storage
+        self.model.VCDN_B = pyo.Param(self.model.B, default=1.0)   # FO Down benefit for storage
+        self.model.V_MARG = pyo.Param(self.model.B, default=1.0)  # marginal value per MWh of capacity
     
     def _define_variables(self):
         # Energy and reserve variables
@@ -87,42 +90,75 @@ class DAFOModel:
         # Storage FO Variables
         self.model.bsu = pyo.Var(self.model.R, self.model.B, self.model.T, domain=pyo.NonNegativeReals)  # Storage FO up
         self.model.bsd = pyo.Var(self.model.R, self.model.B, self.model.T, domain=pyo.NonNegativeReals)  # Storage FO down
+        # Storage Charging/Discharging Variables
+        self.model.charge_state = pyo.Var(self.model.B, self.model.T) # duals doesnt allow binary variables
+        self.model.discharge_state = pyo.Var(self.model.B, self.model.T)
     
     def _define_objective(self):
         # Objective function
         def obj_expression(m):
-            objective_terms = []
+            # objective_terms = []
+             
+            # # Energy costs - generators
+            # if hasattr(m, 'xDA') and len(m.G) > 0:
+            #     objective_terms.append(sum(m.VC[g] * m.xDA[g,t] for g in m.G for t in m.T))
             
-            # Energy costs - generators
-            if hasattr(m, 'xDA') and len(m.G) > 0:
-                objective_terms.append(sum(m.VC[g] * m.xDA[g,t] for g in m.G for t in m.T))
+            # # Flexibility costs - generators
+            # if hasattr(m, 'hsu') and len(m.G) > 0:
+            #     objective_terms.append(sum(m.probTU[r] * m.VCUP[g] * m.hsu[r,g,t] for g in m.G for r in m.R for t in m.T))
+            #     objective_terms.append(-sum(m.probTD[r] * m.VCDN[g] * m.hsd[r,g,t] for g in m.G for r in m.R for t in m.T))
             
-            # Flexibility costs - generators
-            if hasattr(m, 'hsu') and len(m.G) > 0:
-                objective_terms.append(sum(m.probTU[r] * m.VCUP[g] * m.hsu[r,g,t] for g in m.G for r in m.R for t in m.T))
-                objective_terms.append(-sum(m.probTD[r] * m.VCDN[g] * m.hsd[r,g,t] for g in m.G for r in m.R for t in m.T))
+            # # Self-supply flexibility costs
+            # objective_terms.append(sum(m.probTU[r] * m.PEN * m.sdu[r,t] for r in m.R for t in m.T))
+            # objective_terms.append(-sum(m.probTD[r] * m.PENDN * m.sdd[r,t] for r in m.R for t in m.T))
             
-            # Self-supply flexibility costs
-            objective_terms.append(sum(m.probTU[r] * m.PEN * m.sdu[r,t] for r in m.R for t in m.T))
-            objective_terms.append(-sum(m.probTD[r] * m.PENDN * m.sdd[r,t] for r in m.R for t in m.T))
+            # # Storage related costs
+            # if hasattr(m, 'bsu') and len(m.B) > 0:
+            #     # Storage flexibility costs
+            #     objective_terms.append(sum(m.probTU[r] * m.STORAGE_COST[b] * m.bsu[r,b,t] for b in m.B for r in m.R for t in m.T))
+            #     objective_terms.append(-sum(m.probTD[r] * m.STORAGE_COST[b] * m.bsd[r,b,t] for b in m.B for r in m.R for t in m.T))
+            #     # Storage operation costs
+            #     objective_terms.append(sum(m.STORAGE_COST[b] * (m.p_ch[b,t] + m.p_dch[b,t]) for b in m.B for t in m.T))
             
-            # Storage related costs
-            if hasattr(m, 'bsu') and len(m.B) > 0:
-                # Storage flexibility costs
-                objective_terms.append(sum(m.probTU[r] * m.STORAGE_COST[b] * m.bsu[r,b,t] for b in m.B for r in m.R for t in m.T))
-                objective_terms.append(-sum(m.probTD[r] * m.STORAGE_COST[b] * m.bsd[r,b,t] for b in m.B for r in m.R for t in m.T))
-                # Storage operation costs
-                objective_terms.append(sum(m.STORAGE_COST[b] * (m.p_ch[b,t] + m.p_dch[b,t]) for b in m.B for t in m.T))
+            # # Auxiliary costs
+            # objective_terms.append(sum(m.y[s,t] for s in m.S for t in m.T) * m.smallM)
             
-            # Auxiliary costs
-            objective_terms.append(sum(m.y[s,t] for s in m.S for t in m.T) * m.smallM)
+            # # Demand response costs
+            # objective_terms.append(sum(0.2 * m.D1 * (m.d[t] + m.du[s,t]) for s in m.S for t in m.T))
+            # objective_terms.append(0.2 * m.D2 * sum((m.d[t] + m.du[s,t]) * (m.d[t] + m.du[s,t]) for s in m.S for t in m.T))
             
-            # Demand response costs
-            objective_terms.append(sum(0.2 * m.D1 * (m.d[t] + m.du[s,t]) for s in m.S for t in m.T))
-            objective_terms.append(0.2 * m.D2 * sum((m.d[t] + m.du[s,t]) * (m.d[t] + m.du[s,t]) for s in m.S for t in m.T))
-            
-            return sum(objective_terms)
+            # return sum(objective_terms)
+            obj = []
 
+            # 1. Generator Day-Ahead (DA) Energy Cost
+            obj.append(sum(m.VC[g] * m.xDA[g, t] for g in m.G for t in m.T))
+
+            # 2. Generator Flexibility Option (FO) Costs
+            obj.append(sum(m.probTU[r] * m.VCUP[g] * m.hsu[r, g, t] for g in m.G for r in m.R for t in m.T))
+            obj.append(-sum(m.probTD[r] * m.VCDN[g] * m.hsd[r, g, t] for g in m.G for r in m.R for t in m.T))
+
+            # 3. Storage Flexibility Option (FO) Costs
+            obj.append(sum(m.probTU[r] * m.VCUP_B[b] * m.bsu[r, b, t] for b in m.B for r in m.R for t in m.T))
+            obj.append(-sum(m.probTD[r] * m.VCDN_B[b] * m.bsd[r, b, t] for b in m.B for r in m.R for t in m.T))
+
+            # 4. Self-Hedging FO Buyer Penalty (Storage or others)
+            obj.append(sum(m.probTU[r] * m.PEN * m.sdu[r, t] for r in m.R for t in m.T))
+            obj.append(-sum(m.probTD[r] * m.PENDN * m.sdd[r, t] for r in m.R for t in m.T))
+
+            # 5. Auxiliary Variable Penalty for Degeneracy
+            obj.append(sum(m.y[s, t] for s in m.S for t in m.T) * m.smallM)
+
+            # 6. Demand Flexibility Penalty
+            obj.append(sum(0.2 * m.D1 * (m.d[t] + m.du[s, t]) for s in m.S for t in m.T))
+            obj.append(0.2 * m.D2 * sum((m.d[t] + m.du[s, t]) ** 2 for s in m.S for t in m.T))
+
+            # 7. Storage Charging/Discharging Costs
+            obj.append(sum(m.STORAGE_COST[b] * (m.p_ch[b, t] + m.p_dch[b, t]) for b in m.B for t in m.T))
+
+            # 8: Opportunity Cost of SoC (comment out if not used)
+            obj.append(-sum(m.V_MARG[b] * m.e[b, t] for b in m.B for t in m.T))
+
+            return sum(obj)
         self.model.OBJ = pyo.Objective(rule=obj_expression)
     
     def _define_constraints(self):
@@ -221,31 +257,52 @@ class DAFOModel:
                         (1/model.ETA_DCH[b]) * model.p_dch[b,t])
         self.model.storage_balance = pyo.Constraint(self.model.B, self.model.T, rule=storage_balance)
 
-            # Storage capacity constraint
+        # Storage capacity constraint
         def storage_capacity(model, b, t):
             return model.e[b,t] <= model.E_MAX[b]
         self.model.storage_capacity = pyo.Constraint(self.model.B, self.model.T, rule=storage_capacity)
 
-        # Power limits
-        def power_limits(model, b, t):
+        # Refined FO up limit (storage discharge capacity tied to state of charge)
+        def refined_storage_fo_up_limit(model, r, b, t):
+            return model.bsu[r, b, t] <= model.e[b, t] * model.ETA_DCH[b]
+        self.model.storage_fo_up_dynamic = pyo.Constraint(self.model.R, self.model.B, self.model.T, rule=refined_storage_fo_up_limit)
+
+        # Refined FO down limit (storage charge capacity tied to available headroom)
+        def refined_storage_fo_down_limit(model, r, b, t):
+            return model.bsd[r, b, t] <= (model.E_MAX[b] - model.e[b, t]) / model.ETA_CH[b]
+        self.model.storage_fo_down_dynamic = pyo.Constraint(self.model.R, self.model.B, self.model.T, rule=refined_storage_fo_down_limit)
+
+        def storage_fo_power_cap(model, r, b, t):
+            return model.bsu[r,b,t] + model.bsd[r,b,t] <= model.P_MAX[b]
+        self.model.storage_fo_power_cap = pyo.Constraint(self.model.R, self.model.B, self.model.T, rule=storage_fo_power_cap)
+
+        # Enforce mutual exclusivity between charging and discharging states
+        # def charge_discharge_limit(model, b, t):
+        #     epsilon = 1e-6
+        #     return model.p_ch[b, t] * model.p_dch[b, t] <= epsilon
+        # self.model.charge_discharge_limit = pyo.Constraint(self.model.B, self.model.T, rule=charge_discharge_limit)
+
+        def soft_charge_discharge_limit(model, b, t):
             return model.p_ch[b,t] + model.p_dch[b,t] <= model.P_MAX[b]
-        self.model.power_limits = pyo.Constraint(self.model.B, self.model.T, rule=power_limits)
+        self.model.soft_charge_discharge_limit = pyo.Constraint(self.model.B, self.model.T, rule=soft_charge_discharge_limit)
 
-        # Storage flexibility limits
-        def storage_flex_limits(model, r, b, t):
-            return model.bsu[r,b,t] + model.bsd[r,b,t] <= 0.5 * model.P_MAX[b]
-        self.model.storage_flex_limits = pyo.Constraint(self.model.R, self.model.B, self.model.T, rule=storage_flex_limits)
+        # Limit charging power based on binary state and maximum power
+        def charging_cap(model, b, t):
+            return model.p_ch[b, t] <= model.charge_state[b, t] * model.P_MAX[b]
+        self.model.charging_cap = pyo.Constraint(self.model.B, self.model.T, rule=charging_cap)
 
-        # Storage FO up and down constraints
-        def storage_fo_up_limit(model, r, b, t):
-            return model.bsu[r,b,t] <= 0.5 * model.P_MAX[b]
-        self.model.storage_fo_up = pyo.Constraint(self.model.R, self.model.B, self.model.T, 
-                                                rule=storage_fo_up_limit)
-        
-        def storage_fo_down_limit(model, r, b, t):
-            return model.bsd[r,b,t] <= 0.5 * model.P_MAX[b]
-        self.model.storage_fo_down = pyo.Constraint(self.model.R, self.model.B, self.model.T, 
-                                                    rule=storage_fo_down_limit)
+        # Limit discharging power based on binary state and maximum power
+        def discharging_cap(model, b, t):
+            return model.p_dch[b, t] <= model.discharge_state[b, t] * model.P_MAX[b]
+        self.model.discharging_cap = pyo.Constraint(self.model.B, self.model.T, rule=discharging_cap)
+
+        def fo_profit_check_up(model, r, b, t):
+            return model.bsu[r,b,t] * model.PEN >= model.V_MARG[b] * model.bsu[r,b,t]  # sell FO only if revenue ≥ marginal value
+        self.model.fo_profit_check_up = pyo.Constraint(self.model.R, self.model.B, self.model.T, rule=fo_profit_check_up)
+
+        def fo_profit_check_dn(model, r, b, t):
+            return model.bsd[r,b,t] * model.PENDN >= model.V_MARG[b] * model.bsd[r,b,t]
+        self.model.fo_profit_check_dn = pyo.Constraint(self.model.R, self.model.B, self.model.T, rule=fo_profit_check_dn)
 
         # Record duals for market analysis
         self.model.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT)

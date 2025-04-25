@@ -1,17 +1,18 @@
 general:
-  num_periods: 2
+  num_periods: 24
   num_scenarios: 5
-  num_generators: 5
+  num_generators: 157
   num_tiers: 4
   num_storage: 0
 
 data_paths:
-  generator_csv: "data/system/gen.csv"
-  storage_csv: "data/system/storage.csv"
-  demand_csv: "data/system/DAY_AHEAD_regional_load.csv"
+  generator_csv: "data/raw/gen.csv"
+  storage_csv: "data/raw/storage.csv"
+  demand_csv: "data/raw/demand/DAY_AHEAD_regional_load.csv"
+  renewable_csv: "data/input/renewable.csv"
 
 solver:
   name: "cplex"
   executable: "C:/Program Files/IBM/ILOG/CPLEX_Studio2212/cplex/bin/x64_win64/cplex"
   options:
-    tee: true
+    tee: False
