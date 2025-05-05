@@ -10,18 +10,18 @@ import logging
 # Add src directory to Python path
 sys.path.append('./src')
 
-from DAFOModel import DAFOModel
-from RTSimModel import RTSimModel
-from DataProcessor import DataProcessor
-from extract_da import extract_da
-from results_processing import (
+from models.DAFOModel import DAFOModel
+from models.RTSimModel import RTSimModel
+from data_utils.DataProcessor import DataProcessor
+from data_utils.extract_da import extract_da
+from data_utils.results_processing import (
     calculate_rt_margins,
     calculate_rt_payoffs,
     calculate_system_metrics,
     calculate_premium_convergence,
     calculate_total_margins
 )
-from aggregate_renewable_generation import aggregate_renewable_generation
+from data_utils.aggregate_renewable_generation import aggregate_renewable_generation
 
 def setup_logging():
     """Configures logging for the script."""
