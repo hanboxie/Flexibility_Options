@@ -1,12 +1,14 @@
 import pyomo.environ as pyo
 
 class DAFOModel:
-    def __init__(self, num_periods, num_scenarios, num_generators, num_tiers, num_storage):
-        self.num_periods = num_periods
-        self.num_scenarios = num_scenarios
-        self.num_generators = num_generators
-        self.num_tiers = num_tiers
-        self.num_storage = num_storage
+    def __init__(self, config):
+        self.config = config
+        general_cfg = config['general']
+        self.num_periods = general_cfg['num_periods']
+        self.num_scenarios = general_cfg['num_scenarios']
+        self.num_generators = general_cfg['num_generators']
+        self.num_tiers = general_cfg['num_tiers']
+        self.num_storage = general_cfg['num_storage']
         
         self.model = pyo.AbstractModel()
         self._define_sets()

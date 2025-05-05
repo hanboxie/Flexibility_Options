@@ -183,8 +183,15 @@ class DataProcessor:
             print(f"Error processing renewable data: {str(e)}")
             return {}
 
-    def prepare_pyomo_data(self, num_generators, num_storage, num_periods, num_scenarios, num_tiers):
+    def prepare_pyomo_data(self, config):
         """Prepare the data for the Pyomo model."""
+        general_cfg = config['general']
+        num_periods = general_cfg['num_periods']
+        num_scenarios = general_cfg['num_scenarios']
+        num_generators = general_cfg['num_generators']
+        num_tiers = general_cfg['num_tiers']
+        num_storage = general_cfg['num_storage']
+
         if self.gen_data is None:
             success = self.load_data(num_generators, num_storage, num_periods)
             if not success:

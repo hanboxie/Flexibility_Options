@@ -9,7 +9,7 @@ data_paths:
   generator_csv: "data/raw/gen.csv"
   storage_csv: "data/raw/storage.csv"
   demand_csv: "data/raw/demand/DAY_AHEAD_regional_load.csv"
-  renewable_csv: "data/input/renewable.csv"
+  renewable_csv: "data/processed/renewable.csv"
 
 solver:
   name: "cplex"
