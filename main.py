@@ -21,7 +21,7 @@ from data_utils.results_processing import (
     calculate_premium_convergence,
     calculate_total_margins
 )
-from data_utils.aggregate_renewable_generation import aggregate_renewable_generation
+from data_utils.scenario_generation import scenario_generation
 
 def setup_logging():
     """Configures logging for the script."""
@@ -63,14 +63,14 @@ def preprocess_data(config):
         logging.info("Aggregating renewable generation data...")
         # Assuming raw renewable data is in a dir relative to the CSV paths
         raw_renewable_dir = os.path.join(os.path.dirname(paths['generator_csv']), 'renewable') 
-        aggregate_renewable_generation(
+        scenario_generation(
             input_dir=raw_renewable_dir, # Adjust if raw path is different
             output_file=renewable_output_file,
             num_scenarios=general_cfg['num_scenarios']
         )
-        logging.info(f"Aggregated renewable data saved to {renewable_output_file}")
+        logging.info(f"Renewable generation scenariodata saved to {renewable_output_file}")
     else:
-        logging.info(f"Using existing aggregated renewable data: {renewable_output_file}")
+        logging.info(f"Using existing renewable generation scenarios: {renewable_output_file}")
 
     # Prepare data for Pyomo
     logging.info("Processing system data...")
