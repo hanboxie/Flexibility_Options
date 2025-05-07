@@ -1,7 +1,7 @@
 general:
-  num_periods: 24
+  num_periods: 2
   num_scenarios: 5
-  num_generators: 157
+  num_generators: 5
   num_tiers: 4
   num_storage: 0
 
@@ -16,3 +16,20 @@ solver:
   executable: "C:/Program Files/IBM/ILOG/CPLEX_Studio2212/cplex/bin/x64_win64/cplex"
   options:
     tee: False
+
+fo_params:
+  D1: 5
+  D2: 550.0
+  PEN: 2000
+  PENDN: 0
+  smallM: 0.01
+  probTU:
+    1: 0.2
+    2: 0.4
+    3: 0.6
+    4: 0.8
+  probTD:
+    1: 0.8
+    2: 0.6
+    3: 0.4
+    4: 0.2

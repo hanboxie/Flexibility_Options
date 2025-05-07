@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import yaml
 
 class DataProcessor:
     def __init__(self, gen_csv_path, storage_csv_path, demand_csv_path, renewable_csv_path):
@@ -192,6 +193,8 @@ class DataProcessor:
         num_tiers = general_cfg['num_tiers']
         num_storage = general_cfg['num_storage']
 
+        fo_params_data = config.get('fo_params', {})
+
         if self.gen_data is None:
             success = self.load_data(num_generators, num_storage, num_periods)
             if not success:
@@ -210,15 +213,10 @@ class DataProcessor:
             'B': {None: list(range(1, num_storage + 1))}
         }
         
+        # Use the loaded fo_params
         fo_params = {
-            'D1': {None: 5},
-            'D2': {None: 550.0},
-            'PEN': {None: 2000},
-            'PENDN': {None: 0},
-            'smallM': {None: 0.01},
-            # check probabilities
-            'probTU': {1: 0.2, 2: 0.4, 3: 0.6, 4: 0.8},
-            'probTD': {1: 0.8, 2: 0.6, 3: 0.4, 4: 0.2}
+            key: {None: value} if not isinstance(value, dict) else value 
+            for key, value in fo_params_data.items()
         }
         
         pyomo_data = {}
