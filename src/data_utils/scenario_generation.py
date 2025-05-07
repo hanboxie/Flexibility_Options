@@ -8,6 +8,8 @@ def scenario_generation(input_dir, output_file, num_scenarios):
     Aggregates simulation data from multiple CSV files, summing data for the
     same simulation index across all files for each time period.
 
+    We can add parallelism processing here through multithreading if needed.
+
     Args:
         input_dir (str): The root directory containing renewable data CSVs.
         output_file (str): The path to save the aggregated CSV file.
@@ -66,8 +68,8 @@ def scenario_generation(input_dir, output_file, num_scenarios):
     # Create DataFrame
     final_df = pd.DataFrame(simulation_sums)
 
-    # Sort by simulation index and select the first num_scenarios columns
-    final_df = final_df.iloc[:, :num_scenarios]
+    # Select scenarios
+    final_df = select_scenarios(final_df, num_scenarios, criteria='first_n')
 
     final_df.index = [column_mapping.get(hour, hour) for hour in final_df.index]
     final_df.index.name = 'T'
@@ -75,3 +77,33 @@ def scenario_generation(input_dir, output_file, num_scenarios):
 
     final_df.to_csv(output_file)
     print(f"Aggregated data written to {output_file}")
+
+
+def select_scenarios(df, num_scenarios, criteria='first_n', random_state=None):
+    """
+    Pick a subset of scenario‐columns from `df`.
+    Can be expaneded to have custom scenario selection criteria.
+
+    Args:
+        df (pd.DataFrame): columns are different scenarios (e.g. simulation indices).
+        num_scenarios (int): how many columns to keep.
+        criteria (str): 'first_n' or 'random'
+        random_state (int, optional): seed for reproducible random sampling.
+
+    Returns:
+        pd.DataFrame: with exactly `num_scenarios` columns.
+    """
+    total = df.shape[1]
+    if num_scenarios > total:
+        raise ValueError(f"Requested {num_scenarios} scenarios, but only {total} available")
+
+    if criteria == 'first_n':
+        return df.iloc[:, :num_scenarios]
+
+    elif criteria == 'random':
+        # sample columns, not rows!
+        return df.sample(n=num_scenarios, axis=1, random_state=random_state)
+
+    else:
+        raise ValueError(f"Invalid criteria: {criteria!r}. Must be 'first_n' or 'random'.")
+
