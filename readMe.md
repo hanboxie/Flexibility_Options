@@ -57,7 +57,7 @@ The modeling approach is based on the concepts presented in:
 *   **`main_analysis.ipynb`:** The primary Jupyter Notebook to run the full workflow: data loading, DAFO model run, RT model run, results processing, and saving.
 *   **`main.py`:** A command-line script that performs the same workflow as `main_analysis.ipynb`. Useful for running the analysis without a notebook interface. Usage: `python main.py --config path/to/config.yaml --results-dir path/to/output`
 <!-- *   **`vis.ipynb`:** Notebook dedicated to creating visualizations from the data in `results/results.xlsx`. -->
-*   **`original_paper.ipynb`:** Notebook likely containing analysis or code related to the reference paper.
+*   **`original_paper.ipynb`:** Analysis and code performed in the reference paper.
 *   **`src/` Directory:** Contains the core modular Python code:
     *   `data_utils/`: Scripts for data handling.
         *   `DataProcessor.py`: Loads CSV data and prepares it in a dictionary format for Pyomo models.
