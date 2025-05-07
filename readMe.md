@@ -11,32 +11,35 @@ The goal is to evaluate the economic and operational impacts of introducing flex
 
 ## Reference
 
-The modeling approach is based on or inspired by the concepts presented in:
+The modeling approach is based on the concepts presented in:
 *   `Flexibility Options_ A Proposed Product for Managing Imbalance Risk.pdf` (Included in the repository)
 
 ## File Structure
 
 ```
 .
-├── config/                     # Configuration files
+├── config/
 │   └── model_config.yaml       # Main configuration (paths, model params, solver)
-├── data/                       # Input data (CSV format expected)
-│   ├── generator.csv           # Generator parameters
-│   ├── storage.csv             # Storage parameters
-│   ├── demand.csv              # Demand profiles
-│   └── renewable/              # Directory for raw renewable scenarios/files
-│   └── renewable_aggregated.csv # Processed/aggregated renewable data (output of preprocessing)
-├── docs/                       # Project documentation (reports, etc.)
+├── data/
+│   ├── FO_input_sectionV.csv   # Original Paper input data
+│   ├── processed/
+│   │   └── renewable.csv       # Processed renewable energy data
+│   └── raw/
+│       ├── gen.csv             # Generator parameters
+│       ├── demand/             # Directory for demand profiles (structure inferred)
+│       ├── renewable/          # Directory for raw renewable scenarios/files (structure inferred)
+│       └── storage.csv         # Storage parameters
 ├── results/                    # Output files and results
-│   └── results.xlsx            # Main results spreadsheet (margins, payoffs, metrics)
-├── src/                        # Source code for models and processing
-│   ├── DataProcessor.py        # Loads and preprocesses input data
-│   ├── DAFOModel.py            # Pyomo definition for the Day-Ahead FO model
-│   ├── RTSimModel.py           # Pyomo definition for the Real-Time Simulation model
-│   ├── extract_da.py           # Extracts results from DA model for RT model input
-│   ├── results_processing.py   # Functions for calculating metrics from model results
-│   ├── aggregate_renewable_generation.py # Script to aggregate raw renewable data
-│   └── util_plotting.py        # Plotting utility functions
+├── src/
+│   ├── data_utils/
+│   │   ├── DataProcessor.py        # Loads and preprocesses input data
+│   │   ├── scenario_generation.py  # Generates scenarios, possibly for renewable energy or demand
+│   │   ├── extract_da.py           # Extracts results from Day-Ahead model for Real-Time model input
+│   │   ├── results_processing.py   # Functions for calculating metrics from model results
+│   │   └── util_plotting.py        # Plotting utility functions
+│   └── models/
+│       ├── DAFOModel.py            # Pyomo definition for the Day-Ahead Flexibility Option (DAFO) model
+│       └── RTSimModel.py           # Pyomo definition for the Real-Time Simulation (RTSim) model
 ├── .venv/                      # Python virtual environment files
 ├── .vscode/                    # VS Code editor settings
 ├── main_analysis.ipynb         # Jupyter Notebook orchestrating the main analysis workflow
@@ -55,17 +58,21 @@ The modeling approach is based on or inspired by the concepts presented in:
 *   **`main.py`:** A command-line script that performs the same workflow as `main_analysis.ipynb`. Useful for running the analysis without a notebook interface. Usage: `python main.py --config path/to/config.yaml --results-dir path/to/output`
 <!-- *   **`vis.ipynb`:** Notebook dedicated to creating visualizations from the data in `results/results.xlsx`. -->
 *   **`original_paper.ipynb`:** Notebook likely containing analysis or code related to the reference paper.
-*   **`src/` Directory:** Contains modular Python code:
-    *   `DataProcessor.py`: Loads CSV data and prepares it in a dictionary format for Pyomo models.
-    *   `DAFOModel.py`: Defines the Pyomo `AbstractModel` for the DAFO optimization.
-    *   `RTSimModel.py`: Defines the Pyomo `AbstractModel` for the RTSim optimization.
-    *   `extract_da.py`: Extracts relevant data from the solved DA model instance.
-    *   `results_processing.py`: Calculates various financial and operational metrics.
-    *   `aggregate_renewable_generation.py`: Preprocesses renewable energy data.
-    *   `util_plotting.py`: Plotting helper functions (if used).
-*   **`config/model_config.yaml`:** Central configuration file for setting data paths, model parameters (periods, scenarios), and solver settings.
-*   **`data/`:** Location for all input CSV files. Raw renewable data might reside in a subdirectory (`data/renewable/`) before being processed by `aggregate_renewable_generation.py`.
-*   **`results/`:** Default directory where output files, especially `results.xlsx`, are saved.
+*   **`src/` Directory:** Contains the core modular Python code:
+    *   `data_utils/`: Scripts for data handling.
+        *   `DataProcessor.py`: Loads CSV data and prepares it in a dictionary format for Pyomo models.
+        *   `scenario_generation.py`: Creates different renewable generation scenarios for simulation.
+        *   `extract_da.py`: Passes data from the day-ahead stage to the real-time stage.
+        *   `results_processing.py`: Calculates financial and operational metrics.
+        *   `util_plotting.py`: Helper functions for plotting.
+    *   `models/`: Contains the optimization model definitions.
+        *   `DAFOModel.py`: Defines the Day-Ahead Flexibility Option optimization model.
+        *   `RTSimModel.py`: Defines the Real-Time Simulation optimization model.
+*   **`config/model_config.yaml`:** Central configuration file for setting data paths, model parameters, and solver settings.
+*   **`data/`:** Contains all input data.
+    *   `data/raw/`: Raw input files (generators, storage, demand, renewables).
+    *   `data/processed/`: Processed data, like aggregated renewable scenarios.
+*   **`results/`:** Intended directory for output files.
 
 ## Setup & Usage
 

@@ -3,7 +3,7 @@ import os
 import glob
 from collections import defaultdict
 
-def aggregate_renewable_generation(input_dir, output_file, num_scenarios):
+def scenario_generation(input_dir, output_file, num_scenarios):
     """
     Aggregates simulation data from multiple CSV files, summing data for the
     same simulation index across all files for each time period.
