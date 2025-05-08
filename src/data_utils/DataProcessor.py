@@ -66,16 +66,26 @@ class DataProcessor:
 
         gen_data_filtered.set_index(id_col, inplace=True)
 
+        if 'RR' in gen_data_filtered.columns:
+            # convert from MW/min to MW/h
+            gen_data_filtered['RR'] = gen_data_filtered['RR'] * 60
+
         if 'Fuel Price $/MMBTU' in self.gen_data.columns and 'HR_avg_0' in self.gen_data.columns:
             # VC = (Fuel Price * Heat Rate) / 1000
             gen_data_filtered['VC'] = (
                 gen_data_filtered['Fuel Price $/MMBTU'] * gen_data_filtered['HR_avg_0'] / 1000.0
             )
         
+        # if 'Fuel Price $/MMBTU' in gen_data_filtered.columns and 'HR_avg_0' in gen_data_filtered.columns:
+        #     vc_calculated = gen_data_filtered['Fuel Price $/MMBTU'] * gen_data_filtered['HR_avg_0'] / 1000.0
+        #     gen_data_filtered['VC'] = np.where(vc_calculated > 1e-4, vc_calculated, 10.0)
+        # else:
+        #     gen_data_filtered['VC'] = 10.0
+
         gen_data_filtered['VCUP'] = gen_data_filtered['VC']
         gen_data_filtered['VCDN'] = gen_data_filtered['VC']
 
-        params = ['CAP', 'RR','VC','VCUP','VCDN']
+        params = ['CAP', 'RR', 'VC', 'VCUP', 'VCDN']
         gen_data_dict = {}
 
         for param in params:
