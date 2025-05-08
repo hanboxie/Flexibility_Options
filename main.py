@@ -187,9 +187,9 @@ def main():
 
     parser = argparse.ArgumentParser(description="Run DAFO and RTSim models.")
     parser.add_argument("--config", default="config/model_config.yaml", 
-                        help="Path to the configuration YAML file.")
+                        help="Path to the configuration YAML file, default is config/model_config.yaml.")
     parser.add_argument("--results-dir", default="results",
-                        help="Directory to save output results.")
+                        help="Directory to save output results, default is results.")
     parser.add_argument("--benchmark", type=str, choices=['true', 'false'],
                         help="Enable or disable benchmark mode (overrides config file value). Example: --benchmark true")
     args = parser.parse_args()
