@@ -1,4 +1,4 @@
-benchmark: true
+benchmark: false
 
 general:
   num_periods: 24
@@ -12,12 +12,6 @@ data_paths:
   storage_csv: "data/raw/storage.csv"
   demand_csv: "data/raw/demand/DAY_AHEAD_regional_load.csv"
   renewable_csv: "data/processed/renewable.csv"
-
-solver:
-  name: "cplex"
-  executable: "C:/Program Files/IBM/ILOG/CPLEX_Studio2212/cplex/bin/x64_win64/cplex"
-  options:
-    tee: False
 
 fo_params:
   D1: 5
@@ -38,3 +32,9 @@ fo_params:
 
 scenario_selection:
   criteria: "first_n" # Options: "first_n", "random"
+
+solver:
+  name: "cplex"
+  executable: "C:/Program Files/IBM/ILOG/CPLEX_Studio2212/cplex/bin/x64_win64/cplex"
+  options:
+    tee: False

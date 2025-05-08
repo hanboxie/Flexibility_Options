@@ -73,6 +73,9 @@ def scenario_generation(input_dir, output_file, config):
     num_periods = config['general']['num_periods']
     final_df = final_df.iloc[:num_periods, :]
 
+    # Rename scenario columns to be sequential: 1, 2, ..., num_scenarios
+    final_df.columns = range(1, num_scenarios + 1)
+
     # Rename index
     final_df.index = [column_mapping.get(hour, hour) for hour in final_df.index]
     final_df.index.name = 'T'
@@ -103,8 +106,8 @@ def select_scenarios(df, num_scenarios, criteria='first_n', random_state=None):
         return df.iloc[:, :num_scenarios]
 
     elif criteria == 'random':
-        # sample columns, not rows!
-        return df.sample(n=num_scenarios, axis=1, random_state=random_state)
+        # sample columns, not rows
+        return df.sample(n=num_scenarios, axis=1, random_state=42)
 
     else:
         raise ValueError(f"Invalid criteria: {criteria!r}. Must be 'first_n' or 'random'.")
