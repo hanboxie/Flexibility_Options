@@ -196,11 +196,11 @@ class DataProcessor:
 
         if config['benchmark']:
             sets = {
-                'T': {None: list(range(1, 2 + 1))},
-                'S': {None: list(range(1, 5 + 1))},
-                'R': {None: list(range(1, 4 + 1))},
-                'G': {None: list(range(1, 5 + 1))},
-                'B': {None: list(range(1, 0 + 1))}
+                'T': {None: list(range(1, 3))},
+                'S': {None: list(range(1, 6))},
+                'R': {None: list(range(1, 5))},
+                'G': {None: list(range(1, 6))},
+                'B': {None: list(range(1, 1))}
             }
             
             pyomo_data.update(sets)

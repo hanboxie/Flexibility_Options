@@ -3,13 +3,20 @@ import pyomo.environ as pyo
 class DAFOModel:
     def __init__(self, config):
         self.config = config
-        general_cfg = config['general']
-        self.num_periods = general_cfg['num_periods']
-        self.num_scenarios = general_cfg['num_scenarios']
-        self.num_generators = general_cfg['num_generators']
-        self.num_tiers = general_cfg['num_tiers']
-        self.num_storage = general_cfg['num_storage']
-        
+        if config['benchmark']:
+            self.num_periods = 2
+            self.num_scenarios = 5
+            self.num_generators = 5
+            self.num_tiers = 4
+            self.num_storage = 0
+        else:
+            general_cfg = config['general']
+            self.num_periods = general_cfg['num_periods']
+            self.num_scenarios = general_cfg['num_scenarios']
+            self.num_generators = general_cfg['num_generators']
+            self.num_tiers = general_cfg['num_tiers']
+            self.num_storage = general_cfg['num_storage']
+
         self.model = pyo.AbstractModel()
         self._define_sets()
         self._define_parameters()
