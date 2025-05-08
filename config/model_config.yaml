@@ -1,7 +1,9 @@
+benchmark: false
+
 general:
-  num_periods: 2
+  num_periods: 24
   num_scenarios: 5
-  num_generators: 5
+  num_generators: 157
   num_tiers: 4
   num_storage: 0
 

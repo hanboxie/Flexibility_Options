@@ -185,63 +185,74 @@ class DataProcessor:
             return {}
 
     def prepare_pyomo_data(self, config):
-        """Prepare the data for the Pyomo model."""
-        general_cfg = config['general']
-        num_periods = general_cfg['num_periods']
-        num_scenarios = general_cfg['num_scenarios']
-        num_generators = general_cfg['num_generators']
-        num_tiers = general_cfg['num_tiers']
-        num_storage = general_cfg['num_storage']
-
-        fo_params_data = config.get('fo_params', {})
-
-        if self.gen_data is None:
-            success = self.load_data(num_generators, num_storage, num_periods)
-            if not success:
-                return None
-                
-        gen_data_dict = self.process_gen_data()
-        storage_data_dict = self.process_storage_data()
-        demand_data_dict = self.process_demand_data(num_periods)
-        renewable_data_dict = self.process_renewable_data(num_periods)
-        
-        sets = {
-            'T': {None: list(range(1, num_periods + 1))},
-            'S': {None: list(range(1, num_scenarios + 1))},
-            'R': {None: list(range(1, num_tiers + 1))},
-            'G': {None: list(range(1, num_generators + 1))},
-            'B': {None: list(range(1, num_storage + 1))}
-        }
-        
         # Use the loaded fo_params
+        fo_params_data = config.get('fo_params', {})
         fo_params = {
             key: {None: value} if not isinstance(value, dict) else value 
             for key, value in fo_params_data.items()
         }
-        
         pyomo_data = {}
-        pyomo_data.update(sets)
         pyomo_data.update(fo_params)
 
-        pyomo_data.update(gen_data_dict)
-        pyomo_data.update(storage_data_dict)
-        pyomo_data['DEMAND'] = demand_data_dict
-        pyomo_data['RE'] = renewable_data_dict
+        if config['benchmark']:
+            sets = {
+                'T': {None: list(range(1, 2 + 1))},
+                'S': {None: list(range(1, 5 + 1))},
+                'R': {None: list(range(1, 4 + 1))},
+                'G': {None: list(range(1, 5 + 1))},
+                'B': {None: list(range(1, 0 + 1))}
+            }
+            
+            pyomo_data.update(sets)
 
-        # pyomo_data['CAP'] = {1: 50, 2: 10, 3: 10, 4: 10, 5: 10}
-        # pyomo_data['RR'] = {1: 50, 2: 10, 3: 10, 4: 10, 5: 10}
-        # pyomo_data['VC'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
-        # pyomo_data['VCUP'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
-        # pyomo_data['VCDN'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
-        # pyomo_data['RE'] = {
-        #     (1, 1): 131, (1, 2): 131,
-        #     (2, 1): 141, (2, 2): 141,
-        #     (3, 1): 155, (3, 2): 155,
-        #     (4, 1): 165, (4, 2): 165,
-        #     (5, 1): 172, (5, 2): 172
-        # }
-        # pyomo_data['DEMAND'] = {1: 200, 2:200}
-        # pyomo_data['REDA'] = {} # not needed for DAFO
+            pyomo_data['CAP'] = {1: 50, 2: 10, 3: 10, 4: 10, 5: 10}
+            pyomo_data['RR'] = {1: 50, 2: 10, 3: 10, 4: 10, 5: 10}
+            pyomo_data['VC'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
+            pyomo_data['VCUP'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
+            pyomo_data['VCDN'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
+            pyomo_data['RE'] = {
+                (1, 1): 131, (1, 2): 131,
+                (2, 1): 141, (2, 2): 141,
+                (3, 1): 155, (3, 2): 155,
+                (4, 1): 165, (4, 2): 165,
+                (5, 1): 172, (5, 2): 172
+            }
+            pyomo_data['DEMAND'] = {1: 200, 2:200}
+            pyomo_data['REDA'] = {} # not needed for DAFO
+            
+        else:
+            general_cfg = config['general']
+            num_periods = general_cfg['num_periods']
+            num_scenarios = general_cfg['num_scenarios']
+            num_generators = general_cfg['num_generators']
+            num_tiers = general_cfg['num_tiers']
+            num_storage = general_cfg['num_storage']
+
+            sets = {
+                'T': {None: list(range(1, num_periods + 1))},
+                'S': {None: list(range(1, num_scenarios + 1))},
+                'R': {None: list(range(1, num_tiers + 1))},
+                'G': {None: list(range(1, num_generators + 1))},
+                'B': {None: list(range(1, num_storage + 1))}
+            }
+            pyomo_data.update(sets)
+            
+            try:
+                if not self.load_data(num_generators, num_storage, num_periods):
+                    raise Exception("Failed to load data")
+                    
+                gen_data_dict = self.process_gen_data()
+                storage_data_dict = self.process_storage_data()
+                demand_data_dict = self.process_demand_data(num_periods)
+                renewable_data_dict = self.process_renewable_data(num_periods)
+            except Exception as e:
+                print(f"Error in data processing: {str(e)}")
+                raise
+            
+            pyomo_data.update(gen_data_dict)
+            pyomo_data.update(storage_data_dict)
+            pyomo_data['DEMAND'] = demand_data_dict
+            pyomo_data['RE'] = renewable_data_dict
 
         pyomo_data = {None: pyomo_data} # reformat for pyomo
 
