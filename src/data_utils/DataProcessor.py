@@ -120,7 +120,7 @@ class DataProcessor:
 
             if 'E_MAX' in storage_data_filtered.columns:
                 storage_data_dict['E_MAX'] = {
-                    ## REMINDER: REMOVE THIS, just for testing
+                    ## TODO: E_MAX set to 20 just for testing
                     # storage_idx: float(storage_data_filtered.at[storage_idx, 'E_MAX'])
                     storage_idx: 20
                     for storage_idx in storage_data_filtered.index
@@ -128,6 +128,7 @@ class DataProcessor:
                 
             if 'P_MAX' in storage_data_filtered.columns:
                 storage_data_dict['P_MAX'] = {
+                    ## TODO: P_MAX set to 5 just for testing
                     # storage_idx: float(storage_data_filtered.loc[storage_idx, 'P_MAX'])
                     storage_idx: 5
                     for storage_idx in storage_data_filtered.index

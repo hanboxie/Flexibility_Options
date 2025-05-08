@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import pandas as pd
 
 def plot_demand_and_renewables(data):
     """Plots both demand and renewable generation over time on the same figure."""
@@ -29,3 +30,42 @@ def plot_demand_and_renewables(data):
         plt.show()
     else:
         print("Could not find required data keys in the expected structure.")
+
+def print_renewable_stats(data):
+    """Calculates and prints statistics for renewable generation data."""
+    if None in data and all(key in data[None] for key in ['RE', 'T', 'S']):
+        re_data_dict = data[None]['RE']
+        time_periods = sorted(data[None]['T'][None])
+        scenarios = sorted(data[None]['S'][None]) # Assuming 'G' here refers to scenarios
+
+        # Convert to DataFrame: rows=time_periods, columns=scenarios
+        df_data = {}
+        for s_idx, scenario in enumerate(scenarios):
+            df_data[f"Scenario {scenario}"] = [re_data_dict.get((scenario, t), 0) for t in time_periods]
+        
+        re_df = pd.DataFrame(df_data, index=time_periods)
+        re_df.index.name = "Time Period"
+
+        if re_df.empty:
+            print("No renewable energy data found to calculate statistics.")
+            return
+
+        print("\n--- Renewable Energy Statistics ---")
+
+        # Mean and Std Dev per time period
+        print("\nMean Renewable Generation per Time Period (across scenarios):")
+        print(re_df.mean(axis=1))
+
+        print("\nStandard Deviation of Renewable Generation per Time Period (across scenarios):")
+        print(re_df.std(axis=1))
+
+        # Correlation between scenarios
+        print("\nCorrelation Matrix between Renewable Scenarios:")
+        print("\nCHECK CORR IMPLEMENTATION")
+        correlation_matrix = re_df.corr()
+        print(correlation_matrix)
+        
+        print("\n-----------------------------------\n")
+
+    else:
+        print("Could not find required renewable data keys ('RE', 'T', 'G') in the expected structure for statistics.")
