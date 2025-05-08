@@ -3,7 +3,7 @@ import os
 import glob
 from collections import defaultdict
 
-def scenario_generation(input_dir, output_file, num_scenarios):
+def scenario_generation(input_dir, output_file, config):
     """
     Aggregates simulation data from multiple CSV files, summing data for the
     same simulation index across all files for each time period.
@@ -13,7 +13,7 @@ def scenario_generation(input_dir, output_file, num_scenarios):
     Args:
         input_dir (str): The root directory containing renewable data CSVs.
         output_file (str): The path to save the aggregated CSV file.
-        num_scenarios (int): Number of simulation scenarios to keep.
+        config (dict): Configuration dictionary.
     """
     all_files = glob.glob(os.path.join(input_dir, '**', '*.csv'), recursive=True)
 
@@ -65,7 +65,13 @@ def scenario_generation(input_dir, output_file, num_scenarios):
     final_df = grouped.T  # Transpose to get scenarios as columns
 
     # Select scenarios
-    final_df = select_scenarios(final_df, num_scenarios, criteria='first_n')
+    num_scenarios = config['general']['num_scenarios']
+    scenario_criteria = config['scenario_selection']['criteria']
+    final_df = select_scenarios(final_df, num_scenarios, criteria=scenario_criteria)
+
+    # Select number of periods
+    num_periods = config['general']['num_periods']
+    final_df = final_df.iloc[:num_periods, :]
 
     # Rename index
     final_df.index = [column_mapping.get(hour, hour) for hour in final_df.index]

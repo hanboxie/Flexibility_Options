@@ -66,7 +66,7 @@ def preprocess_data(config):
         scenario_generation(
             input_dir=raw_renewable_dir, # Adjust if raw path is different
             output_file=renewable_output_file,
-            num_scenarios=general_cfg['num_scenarios']
+            config=config  # Pass the entire config object
         )
         logging.info(f"Renewable generation scenariodata saved to {renewable_output_file}")
     else:
