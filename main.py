@@ -190,9 +190,16 @@ def main():
                         help="Path to the configuration YAML file.")
     parser.add_argument("--results-dir", default="results",
                         help="Directory to save output results.")
+    parser.add_argument("--benchmark", type=str, choices=['true', 'false'],
+                        help="Enable or disable benchmark mode (overrides config file value). Example: --benchmark true")
     args = parser.parse_args()
 
     config = load_config(args.config)
+    
+    # Override benchmark setting if CLI argument is provided
+    if args.benchmark is not None:
+        config['benchmark'] = (args.benchmark.lower() == 'true')
+        logging.info(f"Benchmark mode overridden by CLI: {config['benchmark']}")
     
     pyomo_system_data, _ = preprocess_data(config) # system_data object ignored for now
     
