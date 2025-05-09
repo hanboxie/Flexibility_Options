@@ -3,16 +3,16 @@ import numpy as np
 
 def extract_da(i, pyomo_system_data):
     energy_data = []
-    for g in i.G:
+    for g in i.G_FO_sellers:
         for t in i.T:
             energy_data.append({'g': g, 't': t, 'en': i.xDA[g, t].value})
     Energy = pd.DataFrame(energy_data).pivot(index='g', columns='t', values='en')
 
-    xDA_data = {(g,t): i.xDA[g,t].value for g in i.G for t in i.T}
+    xDA_data = {(g,t): i.xDA[g,t].value for g in i.G_FO_sellers for t in i.T}
     rgDA_data = {t: i.rgDA[t].value for t in i.T}
     
     Total = pd.DataFrame()
-    Total['cost'] = {t: sum(i.VC[g] * i.xDA[g,t].value for g in i.G) for t in i.T}
+    Total['cost'] = {t: sum(i.VC[g] * i.xDA[g,t].value for g in i.G_FO_sellers) for t in i.T}
     Total['price'] = {t: i.dual[i.Con3[t]] for t in i.T}
     
     # Extract demand FO data
@@ -70,24 +70,21 @@ def extract_da(i, pyomo_system_data):
     Prices.columns = [f'{val}_R{col}' for val, col in Prices.columns]
 
     # Calculate gross margins
-    Gross_margins = pd.DataFrame(index=i.G)
+    Gross_margins = pd.DataFrame(index=i.G_FO_sellers)
 
     # Energy margins
     energy_margins = {}
-    for g in i.G:
+    for g in i.G_FO_sellers:
         margin = sum((i.dual[i.Con3[t]] - i.VC[g]) * i.xDA[g, t].value for t in i.T)
         energy_margins[g] = margin
     Gross_margins["en"] = pd.Series(energy_margins)
 
     # FO margins - only for sellers
     reserve_margins_up = {}
-    vcup_values = {g: i.VCUP[g] for g in i.G}
+    vcup_values = {g: i.VCUP[g] for g in i.G_FO_sellers}
     df_indexed = df.set_index(['G', 'R', 'T'])
 
-    for g in i.G:
-        if g not in i.G_FO_sellers:
-            continue  # Skip non-sellers for FO margins
-            
+    for g in i.G_FO_sellers:
         for r in i.R:
             total_up_margin_gr = 0
             for t in i.T:

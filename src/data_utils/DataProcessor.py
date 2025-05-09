@@ -78,9 +78,7 @@ class DataProcessor:
         
         # if 'Fuel Price $/MMBTU' in gen_data_filtered.columns and 'HR_avg_0' in gen_data_filtered.columns:
         #     vc_calculated = gen_data_filtered['Fuel Price $/MMBTU'] * gen_data_filtered['HR_avg_0'] / 1000.0
-        #     gen_data_filtered['VC'] = np.where(vc_calculated > 1e-4, vc_calculated, 10.0)
-        # else:
-        #     gen_data_filtered['VC'] = 10.0
+        #     gen_data_filtered['VC'] = np.where(vc_calculated > 1.0, vc_calculated, 10.0)
 
         gen_data_filtered['VCUP'] = gen_data_filtered['VC']
         gen_data_filtered['VCDN'] = gen_data_filtered['VC']
@@ -224,8 +222,9 @@ class DataProcessor:
             pyomo_data['CAP'] = {1: 50, 2: 10, 3: 10, 4: 10, 5: 10}
             pyomo_data['RR'] = {1: 50, 2: 10, 3: 10, 4: 10, 5: 10}
             pyomo_data['VC'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
-            pyomo_data['VCUP'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
-            pyomo_data['VCDN'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
+            # pyomo_data['VC'] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+            pyomo_data['VCUP'] = pyomo_data['VC']
+            pyomo_data['VCDN'] = pyomo_data['VC']
             pyomo_data['flag'] = {1: 1, 2: 1, 3: 1, 4: 1, 5: 1}
             pyomo_data['RE'] = {
                 (1, 1): 131, (1, 2): 131,

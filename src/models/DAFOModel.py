@@ -83,7 +83,7 @@ class DAFOModel:
         self.model.du = pyo.Var(self.model.S, self.model.T)                    # Demand uncertainty
         
         # Variables dependent on generator set
-        self.model.xDA = pyo.Var(self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # DA energy schedule
+        self.model.xDA = pyo.Var(self.model.G_FO_sellers, self.model.T, domain=pyo.NonNegativeReals)  # DA energy schedule
         # generator FO Variables
         # self.model.hsu = pyo.Var(self.model.R, self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # Supply FO up
         # self.model.hsd = pyo.Var(self.model.R, self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # Supply FO down
@@ -145,7 +145,7 @@ class DAFOModel:
             obj = []
 
             # 1. Generator Day-Ahead (DA) Energy Cost
-            obj.append(sum(m.VC[g] * m.xDA[g, t] for g in m.G for t in m.T))
+            obj.append(sum(m.VC[g] * m.xDA[g, t] for g in m.G_FO_sellers for t in m.T))
 
             # 2. Generator Flexibility Option (FO) Costs
             obj.append(sum(m.probTU[r] * m.VCUP[g] * m.hsu[r, g, t] for g in m.G_FO_sellers for r in m.R for t in m.T))
@@ -179,7 +179,7 @@ class DAFOModel:
         # Define constraints - Numbering of constraints follows paper
         # Energy balance for each hour
         def DA_energy_balance(model, t):
-            gen_sum = sum(model.xDA[g,t] for g in model.G)
+            gen_sum = sum(model.xDA[g,t] for g in model.G_FO_sellers)
             storage_sum = sum(model.p_dch[b,t] - model.p_ch[b,t] for b in model.B)
             
             return (gen_sum + 
@@ -238,14 +238,14 @@ class DAFOModel:
                 return sum(model.hsu[r, g, t] for r in model.R) <= model.RR[g]
             else:
                 return pyo.Constraint.Skip
-        self.model.Con10up = pyo.Constraint(self.model.G, self.model.T, rule=RRUP)  
+        self.model.Con10up = pyo.Constraint(self.model.G_FO_sellers, self.model.T, rule=RRUP)  
 
         def RRDN(model, g, t):
             if g in model.G_FO_sellers:
                 return sum(model.hsd[r, g, t] for r in model.R) <= model.RR[g]
             else:
                 return pyo.Constraint.Skip
-        self.model.Con10dn = pyo.Constraint(self.model.G, self.model.T, rule=RRDN)
+        self.model.Con10dn = pyo.Constraint(self.model.G_FO_sellers, self.model.T, rule=RRDN)
 
         # Inter-temporal constraints
         def ramp_rate_up(model, g, t):
@@ -253,28 +253,28 @@ class DAFOModel:
                 return pyo.Constraint.Skip
             else:
                 return model.xDA[g,t] - model.xDA[g,t-1] <= model.RR[g]
-        self.model.Con11up = pyo.Constraint(self.model.G, self.model.T, rule=ramp_rate_up)
+        self.model.Con11up = pyo.Constraint(self.model.G_FO_sellers, self.model.T, rule=ramp_rate_up)
 
         def ramp_rate_down(model, g, t):
             if t == 1:
                 return pyo.Constraint.Skip
             else:
                 return model.xDA[g,t-1] - model.xDA[g,t] <= model.RR[g]
-        self.model.Con11dn = pyo.Constraint(self.model.G, self.model.T, rule=ramp_rate_down)
+        self.model.Con11dn = pyo.Constraint(self.model.G_FO_sellers, self.model.T, rule=ramp_rate_down)
 
         def generation_limits(model, g, t):
             if g in model.G_FO_sellers:
                 return model.xDA[g,t] + sum(model.hsu[r,g,t] for r in model.R) <= model.CAP[g]
             else:
                 return model.xDA[g,t] <= model.CAP[g]
-        self.model.Con12 = pyo.Constraint(self.model.G, self.model.T, rule=generation_limits)
+        self.model.Con12 = pyo.Constraint(self.model.G_FO_sellers, self.model.T, rule=generation_limits)
 
         def DA_down_cons(model, g, t):
             if g in model.G_FO_sellers:
                 return sum(model.hsd[r,g,t] for r in model.R) <= model.xDA[g,t]
             else:
                 return pyo.Constraint.Skip
-        self.model.Con13 = pyo.Constraint(self.model.G, self.model.T, rule=DA_down_cons)
+        self.model.Con13 = pyo.Constraint(self.model.G_FO_sellers, self.model.T, rule=DA_down_cons)
 
         # Storage constraints
         # Storage energy balance

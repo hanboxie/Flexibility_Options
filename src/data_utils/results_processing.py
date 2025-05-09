@@ -6,7 +6,7 @@ def calculate_rt_margins(iRT, dataRT):
     """Calculates the Real-Time margins for each generator and scenario."""
     rt_margins_data = {}
     for s in iRT.S:
-        for g in iRT.G:
+        for g in iRT.G_FO_sellers:
             for t in iRT.T:
                 dual_value = iRT.dual[iRT.Con3[s, t]]
                 vc_g = dataRT[None]["VC"].get(g)
@@ -15,11 +15,7 @@ def calculate_rt_margins(iRT, dataRT):
                      continue
 
                 vc_component = iRT.prob[s] * vc_g
-                # Check if generator is in G_FO_sellers before accessing xup/xdn
-                if g in iRT.G_FO_sellers:
-                    gen_adjustment = iRT.xup[s, g, t].value - iRT.xdn[s, g, t].value
-                else:
-                    gen_adjustment = 0  # No RT adjustment for non-FO sellers
+                gen_adjustment = iRT.xup[s, g, t].value - iRT.xdn[s, g, t].value
 
                 margin = (dual_value - vc_component) * gen_adjustment
                 rt_margins_data[(s, g, t)] = margin
@@ -48,12 +44,7 @@ def calculate_rt_payoffs(iRT, dataRT, df):
         # Calculate UP payoffs summed over time t
         if s < iRT.S.last(): # Ensure s is not the last scenario for UP payoffs
             current_up_payoffs = []
-            for g in iRT.G:
-                # Skip if not a flexibility seller
-                if g not in iRT.G_FO_sellers:
-                    current_up_payoffs.append(0)
-                    continue
-                    
+            for g in iRT.G_FO_sellers:
                 total_payoff_g = 0
                 for t in iRT.T:
                     mask = (df["R"] >= s) & (df["G"] == g) & (df["T"] == t)
@@ -73,12 +64,7 @@ def calculate_rt_payoffs(iRT, dataRT, df):
         # Calculate DN payoffs summed over time t
         if s > iRT.S.first(): # Ensure s is not the first scenario for DN payoffs
             current_dn_payoffs = []
-            for g in iRT.G:
-                # Skip if not a flexibility seller
-                if g not in iRT.G_FO_sellers:
-                    current_dn_payoffs.append(0)
-                    continue
-                    
+            for g in iRT.G_FO_sellers:
                 total_payoff_g = 0
                 for t in iRT.T:
                     mask = (df["R"] < s) & (df["G"] == g) & (df["T"] == t)
@@ -182,7 +168,7 @@ def calculate_total_margins(iRT, dataRT, Gross_margins, RTmargins, RTpayoffs, pr
         if not RTpayoffs.empty:
             RTpayoffs = RTpayoffs.reindex(Gross_margins.index, fill_value=0)
         else:
-             RTpayoffs = pd.DataFrame(0, index=Gross_margins.index, columns=RTpayoffs.columns) # Create empty df with correct index/cols
+             RTpayoffs = pd.DataFrame(0, index=Gross_margins.index, columns=RTpayoffs.columns if not RTpayoffs.empty else [])
 
 
     Total_margin = pd.DataFrame(index=Gross_margins.index)

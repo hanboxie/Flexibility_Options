@@ -56,7 +56,7 @@ class RTSimModel:
         self.model.DEMAND = pyo.Param(self.model.T)       # Hourly demand
         self.model.D1 = pyo.Param(within=pyo.NonNegativeIntegers)  # Linear demand cost coefficient
         self.model.D2 = pyo.Param(within=pyo.NonNegativeIntegers)  # Quadratic demand cost coefficient
-        self.model.xDA = pyo.Param(self.model.G, self.model.T) # DA schedule by generator and time
+        self.model.xDA = pyo.Param(self.model.G_FO_sellers, self.model.T) # DA schedule by generator and time
         self.model.REDA = pyo.Param(self.model.T)         # DA renewable schedule by time
         self.model.PEN = pyo.Param(within=pyo.NonNegativeIntegers)   # Upward penalty
         self.model.PENDN = pyo.Param()                    # Downward penalty
