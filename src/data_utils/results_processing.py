@@ -15,7 +15,11 @@ def calculate_rt_margins(iRT, dataRT):
                      continue
 
                 vc_component = iRT.prob[s] * vc_g
-                gen_adjustment = iRT.xup[s, g, t].value - iRT.xdn[s, g, t].value
+                # Check if generator is in G_FO_sellers before accessing xup/xdn
+                if g in iRT.G_FO_sellers:
+                    gen_adjustment = iRT.xup[s, g, t].value - iRT.xdn[s, g, t].value
+                else:
+                    gen_adjustment = 0  # No RT adjustment for non-FO sellers
 
                 margin = (dual_value - vc_component) * gen_adjustment
                 rt_margins_data[(s, g, t)] = margin
@@ -45,10 +49,15 @@ def calculate_rt_payoffs(iRT, dataRT, df):
         if s < iRT.S.last(): # Ensure s is not the last scenario for UP payoffs
             current_up_payoffs = []
             for g in iRT.G:
+                # Skip if not a flexibility seller
+                if g not in iRT.G_FO_sellers:
+                    current_up_payoffs.append(0)
+                    continue
+                    
                 total_payoff_g = 0
                 for t in iRT.T:
                     mask = (df["R"] >= s) & (df["G"] == g) & (df["T"] == t)
-                    if not mask.empty:
+                    if not mask.empty and len(df.loc[mask]) > 0:
                         hsu_sum_for_g = df.loc[mask, "hsu"].sum()
                         price_component = iRT.dual[iRT.Con3[s, t]] * hsu_sum_for_g
                         vcup_g = dataRT[None]["VCUP"].get(g)
@@ -65,10 +74,15 @@ def calculate_rt_payoffs(iRT, dataRT, df):
         if s > iRT.S.first(): # Ensure s is not the first scenario for DN payoffs
             current_dn_payoffs = []
             for g in iRT.G:
+                # Skip if not a flexibility seller
+                if g not in iRT.G_FO_sellers:
+                    current_dn_payoffs.append(0)
+                    continue
+                    
                 total_payoff_g = 0
                 for t in iRT.T:
                     mask = (df["R"] < s) & (df["G"] == g) & (df["T"] == t)
-                    if not mask.empty:
+                    if not mask.empty and len(df.loc[mask]) > 0:
                         hsd_sum_for_g = df.loc[mask, "hsd"].sum()
                         price_component = iRT.dual[iRT.Con3[s, t]] * hsd_sum_for_g
                         vcdn_g = dataRT[None]["VCDN"].get(g)
@@ -102,8 +116,10 @@ def calculate_system_metrics(iRT, dataRT, total_da):
 
     for s in iRT.S:
         # RT Cost (summed over t)
-        up_costs = sum(dataRT[None]["VCUP"].get(g, 0) * iRT.xup[s, g, t].value for g in iRT.G for t in iRT.T)
-        down_costs = sum(dataRT[None]["VCDN"].get(g, 0) * iRT.xdn[s, g, t].value for g in iRT.G for t in iRT.T)
+        up_costs = sum(dataRT[None]["VCUP"].get(g, 0) * iRT.xup[s, g, t].value 
+                      for g in iRT.G_FO_sellers for t in iRT.T)
+        down_costs = sum(dataRT[None]["VCDN"].get(g, 0) * iRT.xdn[s, g, t].value 
+                        for g in iRT.G_FO_sellers for t in iRT.T)
         # Note the sign change for down_costs as xdn is reduction
         Total.at['cost', s] = iRT.prob[s] * (up_costs - down_costs)
 

@@ -31,6 +31,9 @@ class RTSimModel:
         # Generator set
         if self.num_generators > 0:
             self.model.G = pyo.RangeSet(1, self.num_generators)
+            self.model.flag       = pyo.Param(self.model.G, within=pyo.Integers)
+            self.model.G_FO_buyers  = pyo.Set(initialize=lambda m: [g for g in m.G if m.flag[g] == -1])
+            self.model.G_FO_sellers = pyo.Set(initialize=lambda m: [g for g in m.G if m.flag[g] == 1])
         else:
             self.model.G = pyo.Set(initialize=[])
         
@@ -78,9 +81,11 @@ class RTSimModel:
     def _define_variables(self):
         # Variables that depend on generators
         # RT adjustment variables for each scenario and time
-        self.model.xup = pyo.Var(self.model.S, self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # Generator up adjustment
-        self.model.xdn = pyo.Var(self.model.S, self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # Generator down adjustment
-        
+        # self.model.xup = pyo.Var(self.model.S, self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # Generator up adjustment
+        # self.model.xdn = pyo.Var(self.model.S, self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # Generator down adjustment
+        self.model.xup = pyo.Var(self.model.S, self.model.G_FO_sellers, self.model.T, domain=pyo.NonNegativeReals)
+        self.model.xdn = pyo.Var(self.model.S, self.model.G_FO_sellers, self.model.T, domain=pyo.NonNegativeReals)
+
         # Variables independent of generators and storage
         self.model.d = pyo.Var(self.model.S, self.model.T)     # RT demand response
         self.model.rgup = pyo.Var(self.model.S, self.model.T, domain=pyo.NonNegativeReals)  # RE up adjustment
@@ -101,9 +106,9 @@ class RTSimModel:
         def obj_expression(m):
             return sum(
                 m.prob[s] * (
-                    # Generator adjustment costs over time
+                    # Generator adjustment costs over time - update to use G_FO_sellers
                     sum(m.VCUP[g] * m.xup[s, g, t] - m.VCDN[g] * m.xdn[s, g, t]
-                        for g in m.G for t in m.T)
+                        for g in m.G_FO_sellers for t in m.T)
 
                     # Penalty costs over time
                     + m.PENDN * sum(m.sdup[s, t] for t in m.T)
@@ -127,7 +132,7 @@ class RTSimModel:
     def _define_constraints(self):
         # RT energy balance for each scenario and time period
         def RT_energy_balance(model, s, t):
-            gen_adjustment = sum(model.xup[s,g,t] - model.xdn[s,g,t] for g in model.G)
+            gen_adjustment = sum(model.xup[s,g,t] - model.xdn[s,g,t] for g in model.G_FO_sellers)
             storage_adjustment = sum(
                 model.p_dch[s,b,t] - model.p_ch[s,b,t] - 
                 model.p_dch_DA[b,t] + model.p_ch_DA[b,t] for b in model.B
@@ -147,29 +152,27 @@ class RTSimModel:
                     
         self.model.Con4 = pyo.Constraint(self.model.S, self.model.T, rule=RT_RE_availability)
 
-        # Generator constraints - only if generators exist
-        if hasattr(self.model, 'xup') and (len(self.model.G) > 0 or isinstance(self.model.G, pyo.RangeSet) or self.num_generators is None):
-            # Generator ramping constraints
-            def RT_ramp_up(model, s, g, t):
-                return model.xup[s,g,t] <= model.RR[g]
-                
-            self.model.Con5up = pyo.Constraint(self.model.S, self.model.G, self.model.T, rule=RT_ramp_up)
+        # Generator constraints
+        def RT_ramp_up(model, s, g, t):
+            return model.xup[s,g,t] <= model.RR[g]
+            
+        self.model.Con5up = pyo.Constraint(self.model.S, self.model.G_FO_sellers, self.model.T, rule=RT_ramp_up)
 
-            def RT_ramp_dn(model, s, g, t):
-                return model.xdn[s,g,t] <= model.RR[g]
-                
-            self.model.Con5dn = pyo.Constraint(self.model.S, self.model.G, self.model.T, rule=RT_ramp_dn)
+        def RT_ramp_dn(model, s, g, t):
+            return model.xdn[s,g,t] <= model.RR[g]
+            
+        self.model.Con5dn = pyo.Constraint(self.model.S, self.model.G_FO_sellers, self.model.T, rule=RT_ramp_dn)
 
-            # Generator capacity constraints
-            def RT_capacity_cons(model, s, g, t):
-                return model.xDA[g,t] + model.xup[s,g,t] <= model.CAP[g]
-                
-            self.model.Con6 = pyo.Constraint(self.model.S, self.model.G, self.model.T, rule=RT_capacity_cons)
+        # Generator capacity constraints
+        def RT_capacity_cons(model, s, g, t):
+            return model.xDA[g,t] + model.xup[s,g,t] <= model.CAP[g]
+            
+        self.model.Con6 = pyo.Constraint(self.model.S, self.model.G_FO_sellers, self.model.T, rule=RT_capacity_cons)
 
-            def RT_capacity_min(model, s, g, t):
-                return model.xDA[g,t] - model.xdn[s,g,t] >= 0
-                
-            self.model.Con7 = pyo.Constraint(self.model.S, self.model.G, self.model.T, rule=RT_capacity_min)
+        def RT_capacity_min(model, s, g, t):
+            return model.xDA[g,t] - model.xdn[s,g,t] >= 0
+            
+        self.model.Con7 = pyo.Constraint(self.model.S, self.model.G_FO_sellers, self.model.T, rule=RT_capacity_min)
 
         # Storage Constraints
         # Storage energy balance

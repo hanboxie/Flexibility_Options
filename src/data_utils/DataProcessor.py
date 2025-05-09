@@ -52,7 +52,7 @@ class DataProcessor:
             'Ramp Rate MW/Min': 'RR',
         }
 
-        relevant_cols = list(column_mapping.keys()) + ['Fuel Price $/MMBTU', 'HR_avg_0', 'VOM']
+        relevant_cols = list(column_mapping.keys()) + ['Fuel Price $/MMBTU', 'HR_avg_0', 'VOM', 'flag']
         existing_cols = [col for col in relevant_cols if col in self.gen_data.columns]
         selected_cols = [id_col] + existing_cols
         gen_data_filtered = self.gen_data[selected_cols].copy()
@@ -94,7 +94,12 @@ class DataProcessor:
                 for gen_idx in gen_data_filtered.index:
                     param_dict[gen_idx] = gen_data_filtered.loc[gen_idx, param]
                 gen_data_dict[param] = param_dict
-            
+
+        print(gen_data_filtered)
+        param_dict = {gen_idx: int(gen_data_filtered.at[gen_idx, 'flag'])
+                    for gen_idx in gen_data_filtered.index}
+        gen_data_dict['flag'] = param_dict
+
         return gen_data_dict
 
     def process_storage_data(self):
@@ -221,6 +226,7 @@ class DataProcessor:
             pyomo_data['VC'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
             pyomo_data['VCUP'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
             pyomo_data['VCDN'] = {1: 20, 2: 35, 3: 50, 4: 60, 5: 70}
+            pyomo_data['flag'] = {1: 1, 2: 1, 3: 1, 4: 1, 5: 1}
             pyomo_data['RE'] = {
                 (1, 1): 131, (1, 2): 131,
                 (2, 1): 141, (2, 2): 141,

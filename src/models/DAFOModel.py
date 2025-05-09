@@ -32,6 +32,9 @@ class DAFOModel:
         # Generator set
         if self.num_generators > 0:
             self.model.G = pyo.RangeSet(1, self.num_generators)
+            self.model.flag       = pyo.Param(self.model.G, within=pyo.Integers)
+            self.model.G_FO_buyers  = pyo.Set(initialize=lambda m: [g for g in m.G if m.flag[g] == -1])
+            self.model.G_FO_sellers = pyo.Set(initialize=lambda m: [g for g in m.G if m.flag[g] == 1])
         else:
             self.model.G = pyo.Set(initialize=[])
         
@@ -82,9 +85,11 @@ class DAFOModel:
         # Variables dependent on generator set
         self.model.xDA = pyo.Var(self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # DA energy schedule
         # generator FO Variables
-        self.model.hsu = pyo.Var(self.model.R, self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # Supply FO up
-        self.model.hsd = pyo.Var(self.model.R, self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # Supply FO down
-            
+        # self.model.hsu = pyo.Var(self.model.R, self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # Supply FO up
+        # self.model.hsd = pyo.Var(self.model.R, self.model.G, self.model.T, domain=pyo.NonNegativeReals)  # Supply FO down
+        self.model.hsu = pyo.Var(self.model.R, self.model.G_FO_sellers, self.model.T, domain=pyo.NonNegativeReals)  # Supply FO up
+        self.model.hsd = pyo.Var(self.model.R, self.model.G_FO_sellers, self.model.T, domain=pyo.NonNegativeReals)  # Supply FO down
+
         # FO Variables independent of generators and storage
         self.model.hdu = pyo.Var(self.model.R, self.model.T, domain=pyo.NonNegativeReals)     # Demand FO up
         self.model.hdd = pyo.Var(self.model.R, self.model.T, domain=pyo.NonNegativeReals)     # Demand FO down
@@ -143,8 +148,8 @@ class DAFOModel:
             obj.append(sum(m.VC[g] * m.xDA[g, t] for g in m.G for t in m.T))
 
             # 2. Generator Flexibility Option (FO) Costs
-            obj.append(sum(m.probTU[r] * m.VCUP[g] * m.hsu[r, g, t] for g in m.G for r in m.R for t in m.T))
-            obj.append(-sum(m.probTD[r] * m.VCDN[g] * m.hsd[r, g, t] for g in m.G for r in m.R for t in m.T))
+            obj.append(sum(m.probTU[r] * m.VCUP[g] * m.hsu[r, g, t] for g in m.G_FO_sellers for r in m.R for t in m.T))
+            obj.append(-sum(m.probTD[r] * m.VCDN[g] * m.hsd[r, g, t] for g in m.G_FO_sellers for r in m.R for t in m.T))
 
             # 3. Storage Flexibility Option (FO) Costs
             obj.append(sum(m.probTU[r] * m.VCUP_B[b] * m.bsu[r, b, t] for b in m.B for r in m.R for t in m.T))
@@ -184,9 +189,13 @@ class DAFOModel:
         
         self.model.Con3 = pyo.Constraint(self.model.T, rule=DA_energy_balance)
 
+        # def temp_dt(model, t):
+        #     return (model.d[t] <= 1e-4)
+        # self.model.TempCons = pyo.Constraint(self.model.T, rule=temp_dt)
+
         # Flexibility balance for each hour
         def DA_flexup_balance(model, r, t):
-            gen_flex_up = sum(model.hsu[r,g,t] for g in model.G)
+            gen_flex_up = sum(model.hsu[r,g,t] for g in model.G_FO_sellers)
             storage_flex_up = sum(model.bsu[r,b,t] for b in model.B)
             
             return (gen_flex_up + storage_flex_up == model.hdu[r,t])
@@ -194,7 +203,7 @@ class DAFOModel:
         self.model.Con4UP = pyo.Constraint(self.model.R, self.model.T, rule=DA_flexup_balance)
 
         def DA_flexdn_balance(model, r, t):
-            gen_flex_down = sum(model.hsd[r,g,t] for g in model.G)
+            gen_flex_down = sum(model.hsd[r,g,t] for g in model.G_FO_sellers)
             storage_flex_down = sum(model.bsd[r,b,t] for b in model.B)
             
             return (gen_flex_down + storage_flex_down == model.hdd[r,t])
@@ -225,33 +234,47 @@ class DAFOModel:
 
         # Generator constraints
         def RRUP(model, g, t):
-            return sum(model.hsu[r, g, t] for r in model.R) <= model.RR[g]
+            if g in model.G_FO_sellers:
+                return sum(model.hsu[r, g, t] for r in model.R) <= model.RR[g]
+            else:
+                return pyo.Constraint.Skip
         self.model.Con10up = pyo.Constraint(self.model.G, self.model.T, rule=RRUP)  
 
         def RRDN(model, g, t):
-            return sum(model.hsd[r, g, t] for r in model.R) <= model.RR[g]
+            if g in model.G_FO_sellers:
+                return sum(model.hsd[r, g, t] for r in model.R) <= model.RR[g]
+            else:
+                return pyo.Constraint.Skip
         self.model.Con10dn = pyo.Constraint(self.model.G, self.model.T, rule=RRDN)
 
         # Inter-temporal constraints
         def ramp_rate_up(model, g, t):
             if t == 1:
                 return pyo.Constraint.Skip
-            return model.xDA[g,t] - model.xDA[g,t-1] <= model.RR[g]
-        self.model.Con13up = pyo.Constraint(self.model.G, self.model.T, rule=ramp_rate_up)
+            else:
+                return model.xDA[g,t] - model.xDA[g,t-1] <= model.RR[g]
+        self.model.Con11up = pyo.Constraint(self.model.G, self.model.T, rule=ramp_rate_up)
 
         def ramp_rate_down(model, g, t):
             if t == 1:
                 return pyo.Constraint.Skip
-            return model.xDA[g,t-1] - model.xDA[g,t] <= model.RR[g]
-        self.model.Con13dn = pyo.Constraint(self.model.G, self.model.T, rule=ramp_rate_down)
+            else:
+                return model.xDA[g,t-1] - model.xDA[g,t] <= model.RR[g]
+        self.model.Con11dn = pyo.Constraint(self.model.G, self.model.T, rule=ramp_rate_down)
 
         def generation_limits(model, g, t):
-            return model.xDA[g,t]+ sum(model.hsu[r,g,t] for r in model.R) <= model.CAP[g]
-        self.model.Con11 = pyo.Constraint(self.model.G, self.model.T, rule=generation_limits)
+            if g in model.G_FO_sellers:
+                return model.xDA[g,t] + sum(model.hsu[r,g,t] for r in model.R) <= model.CAP[g]
+            else:
+                return model.xDA[g,t] <= model.CAP[g]
+        self.model.Con12 = pyo.Constraint(self.model.G, self.model.T, rule=generation_limits)
 
         def DA_down_cons(model, g, t):
-            return sum(model.hsd[r,g,t] for r in model.R)<= model.xDA[g,t]
-        self.model.Con12= pyo.Constraint(self.model.G, self.model.T, rule=DA_down_cons)
+            if g in model.G_FO_sellers:
+                return sum(model.hsd[r,g,t] for r in model.R) <= model.xDA[g,t]
+            else:
+                return pyo.Constraint.Skip
+        self.model.Con13 = pyo.Constraint(self.model.G, self.model.T, rule=DA_down_cons)
 
         # Storage constraints
         # Storage energy balance
