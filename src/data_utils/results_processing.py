@@ -94,8 +94,8 @@ def calculate_system_metrics(iRT, dataRT, total_da):
     Total = pd.DataFrame()
 
     # Add DA metrics first
-    Total.loc['price', 'DA'] = total_da['price'].mean() if 'price' in total_da and not total_da['price'].empty else np.nan
-    Total.loc['cost', 'DA'] = total_da['cost'].sum() if 'cost' in total_da else np.nan
+    Total.loc['average price', 'DA'] = total_da['price'].mean() if 'price' in total_da and not total_da['price'].empty else np.nan
+    Total.loc['total cost', 'DA'] = total_da['cost'].sum() if 'cost' in total_da else np.nan
     Total.loc['unmet_demand', 'DA'] = np.nan # No unmet demand in DA
     Total.loc['curtail cost', 'DA'] = np.nan # No curtailment in DA
 
@@ -107,11 +107,11 @@ def calculate_system_metrics(iRT, dataRT, total_da):
         down_costs = sum(dataRT[None]["VCDN"].get(g, 0) * iRT.xdn[s, g, t].value 
                         for g in iRT.G_FO_sellers for t in iRT.T)
         # Note the sign change for down_costs as xdn is reduction
-        Total.at['cost', s] = iRT.prob[s] * (up_costs - down_costs)
+        Total.at['total cost', s] = iRT.prob[s] * (up_costs - down_costs)
 
         # RT Price (average price over time)
         prices_s = [iRT.dual[iRT.Con3[s, t]] for t in iRT.T]
-        Total.at['price', s] = np.mean(prices_s) if prices_s else np.nan
+        Total.at['average price', s] = np.mean(prices_s) if prices_s else np.nan
 
         # RT Unmet demand cost (summed over t)
         d1_val = dataRT[None]["D1"].get(None, 0)
