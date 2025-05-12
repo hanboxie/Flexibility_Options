@@ -110,7 +110,6 @@ class DataProcessor:
                 'Max Volume GWh': 'E_MAX',
                 'Rating MVA': 'P_MAX',
                 'Initial Volume GWh': 'E0',
-                # 'Storage Roundtrip Efficiency': 'ETA'
             }
 
             relevant_cols = list(column_mapping.keys())
@@ -122,41 +121,38 @@ class DataProcessor:
             rename_dict = {col: column_mapping[col] for col in column_mapping if col in storage_data_filtered.columns}
             storage_data_filtered.rename(columns=rename_dict, inplace=True)
 
-            original_ids = storage_data_filtered[id_col].tolist()
-            storage_id_mapping = {original_id: i+1 for i, original_id in enumerate(original_ids)}
-            storage_data_filtered[id_col] = storage_data_filtered[id_col].map(storage_id_mapping)
-        
+            # Assign new 1-based sequential IDs to the 'GEN UID' column (id_col)
+            # This makes 'GEN UID' the new unique identifier for selected storages, ensuring the index is unique.
+
+            # issue: index for UID not unique in storage.csv
+            storage_data_filtered[id_col] = range(1, len(storage_data_filtered) + 1)
             storage_data_filtered.set_index(id_col, inplace=True)
 
             storage_data_dict = {}
 
             if 'E_MAX' in storage_data_filtered.columns:
                 storage_data_dict['E_MAX'] = {
-                    ## TODO: E_MAX set to 20 just for testing
-                    # storage_idx: float(storage_data_filtered.at[storage_idx, 'E_MAX'])
-                    storage_idx: 20
+                    storage_idx: float(storage_data_filtered.at[storage_idx, 'E_MAX']) * 1000
                     for storage_idx in storage_data_filtered.index
                 }
                 
             if 'P_MAX' in storage_data_filtered.columns:
                 storage_data_dict['P_MAX'] = {
-                    ## TODO: P_MAX set to 5 just for testing
-                    # storage_idx: float(storage_data_filtered.loc[storage_idx, 'P_MAX'])
-                    storage_idx: 5
+                    storage_idx: float(storage_data_filtered.loc[storage_idx, 'P_MAX'])
                     for storage_idx in storage_data_filtered.index
                 }
             
             # check charging and discharging efficiency
             storage_data_dict['ETA_CH'] = {
-                storage_idx: 0.9    
+                storage_idx: 1    
                 for storage_idx in storage_data_filtered.index
             }
             storage_data_dict['ETA_DCH'] = {
-                storage_idx: 0.9
+                storage_idx: 1
                 for storage_idx in storage_data_filtered.index
             }
             storage_data_dict['STORAGE_COST'] = {
-                storage_idx: 0.9
+                storage_idx: 1e-4
                 for storage_idx in storage_data_filtered.index
             }
             storage_data_dict['E0'] = {
