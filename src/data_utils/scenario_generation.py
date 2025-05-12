@@ -107,7 +107,7 @@ def select_scenarios(df, num_scenarios, criteria='first_n', random_state=None):
 
     elif criteria == 'random':
         # sample columns, not rows
-        return df.sample(n=num_scenarios, axis=1, random_state=42)
+        return df.sample(n=num_scenarios, axis=1)
 
     else:
         raise ValueError(f"Invalid criteria: {criteria!r}. Must be 'first_n' or 'random'.")
