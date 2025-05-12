@@ -199,13 +199,6 @@ class RTSimModel:
             return model.p_ch[s,b,t] + model.p_dch[s,b,t] <= model.P_MAX[b]
             
         self.model.power_limits = pyo.Constraint(self.model.S, self.model.B, self.model.T, rule=power_limits)
-        
-        # Storage adjustment limits
-        def storage_adjustment_limits(model, s, b, t):
-            return model.b_up[s,b,t] + model.b_dn[s,b,t] <= 0.5 * model.P_MAX[b]
-            
-        self.model.storage_adjustment_limits = pyo.Constraint(self.model.S, self.model.B, self.model.T, 
-                                                            rule=storage_adjustment_limits)
 
         # Final state of charge requirement
         def final_soc(model, s, b):
