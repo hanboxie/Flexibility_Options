@@ -55,3 +55,7 @@ log/
 # System Files
 .DS_Store
 Thumbs.db 
+
+# Results
+results/batch_simulations/
+data/processed/renewable.csv

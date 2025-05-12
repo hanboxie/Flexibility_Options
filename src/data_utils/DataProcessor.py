@@ -93,7 +93,6 @@ class DataProcessor:
                     param_dict[gen_idx] = gen_data_filtered.loc[gen_idx, param]
                 gen_data_dict[param] = param_dict
 
-        print(gen_data_filtered)
         param_dict = {gen_idx: int(gen_data_filtered.at[gen_idx, 'flag'])
                     for gen_idx in gen_data_filtered.index}
         gen_data_dict['flag'] = param_dict
