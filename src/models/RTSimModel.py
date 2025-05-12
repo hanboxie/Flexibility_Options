@@ -70,8 +70,8 @@ class RTSimModel:
         self.model.E0 = pyo.Param(self.model.B)           # Initial state of charge
         self.model.STORAGE_COST = pyo.Param(self.model.B)  # Operating cost per MWh of throughput
         self.model.E_FINAL = pyo.Param(self.model.B)      # Required final state of charge
-        self.model.VCUP_B = pyo.Param(self.model.B, default=1.0)   # FO Up cost for storage
-        self.model.VCDN_B = pyo.Param(self.model.B, default=1.0)   # FO Down cost (benefit) for storage
+        self.model.VCUP_B = pyo.Param(self.model.B, default=0.0)   # FO Up cost for storage
+        self.model.VCDN_B = pyo.Param(self.model.B, default=0.0)   # FO Down cost (benefit) for storage
 
         # Storage DA parameters
         self.model.e_DA = pyo.Param(self.model.B, self.model.T)  # DA energy level

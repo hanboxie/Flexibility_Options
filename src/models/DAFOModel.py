@@ -72,9 +72,9 @@ class DAFOModel:
         self.model.E0 = pyo.Param(self.model.B)           # Initial state of charge
         self.model.E_FINAL = pyo.Param(self.model.B)      # Required final state of charge
         self.model.STORAGE_COST = pyo.Param(self.model.B) # Storage operating cost per MWh
-        self.model.VCUP_B = pyo.Param(self.model.B, default=1.0)   # FO Up cost for storage
-        self.model.VCDN_B = pyo.Param(self.model.B, default=1.0)   # FO Down benefit for storage
-        self.model.V_MARG = pyo.Param(self.model.B, default=1.0)  # marginal value per MWh of capacity
+        self.model.VCUP_B = pyo.Param(self.model.B, default=0.0)   # FO Up cost for storage
+        self.model.VCDN_B = pyo.Param(self.model.B, default=0.0)   # FO Down benefit for storage
+        self.model.V_MARG = pyo.Param(self.model.B, default=0.0)  # marginal value per MWh of capacity
     
     def _define_variables(self):
         # Energy and reserve variables
