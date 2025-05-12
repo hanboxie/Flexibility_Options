@@ -42,19 +42,27 @@ def summarize_batch_results(batch_results_dir, output_summary_file):
         system_metrics_file = run_dir / "system_metrics.csv"
 
         mean_renewable_gen = np.nan
-        std_renewable_gen = np.nan
+        overall_std_renewable_generation = np.nan
+        mean_scenario_std_renewable_generation = np.nan
         sum_total_cost = np.nan
 
         # 1. Process renewable_generation.csv
         if renewable_gen_file.exists():
             try:
                 df_renewable = pd.read_csv(renewable_gen_file)
-                if 'generation' in df_renewable.columns:
+                if 'generation' in df_renewable.columns and 'time_period' in df_renewable.columns:
                     mean_renewable_gen = df_renewable['generation'].mean()
-                    std_renewable_gen = df_renewable['generation'].std()
-                    logging.debug(f"{run_id_str}: Mean Gen={mean_renewable_gen:.2f}, Std Gen={std_renewable_gen:.2f}")
-                else:
+                    overall_std_renewable_generation = df_renewable['generation'].std()
+                    
+                    # Calculate std for each time_period across scenarios, then average these stds
+                    scenario_std_by_time_period = df_renewable.groupby('time_period')['generation'].std(ddof=0) # ddof=0 for population std if appropriate, or 1 for sample
+                    mean_scenario_std_renewable_generation = scenario_std_by_time_period.mean()
+                    
+                    logging.debug(f"{run_id_str}: Mean Gen={mean_renewable_gen:.2f}, Overall Std Gen={overall_std_renewable_generation:.2f}, Mean Scenario Std Gen={mean_scenario_std_renewable_generation:.2f}")
+                elif 'generation' not in df_renewable.columns:
                     logging.warning(f"'generation' column not found in {renewable_gen_file} for {run_id_str}.")
+                else: # 'time_period' not in df_renewable.columns
+                    logging.warning(f"'time_period' column not found in {renewable_gen_file} for {run_id_str}, cannot calculate mean_scenario_std_renewable_generation.")
             except Exception as e:
                 logging.error(f"Error processing {renewable_gen_file} for {run_id_str}: {e}")
         else:
@@ -85,7 +93,8 @@ def summarize_batch_results(batch_results_dir, output_summary_file):
         summary_data.append({
             'run_id': run_id_str,
             'mean_renewable_generation': mean_renewable_gen,
-            'std_renewable_generation': std_renewable_gen,
+            'overall_std_renewable_generation': overall_std_renewable_generation,
+            'mean_scenario_std_renewable_generation': mean_scenario_std_renewable_generation,
             'sum_total_cost': sum_total_cost
         })
 
